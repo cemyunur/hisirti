@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Ustanın Eğitimi</title>
     <style>
         body { 
@@ -12,9 +12,14 @@
             cursor: crosshair; 
             font-family: monospace;
             color: #ddd;
+            /* Mobilde parmak basılı tutulduğunda metin seçimi çıkmasını engeller */
+            user-select: none; 
+            -webkit-user-select: none;
         }
         canvas { 
             display: block; 
+            /* Mobilde ekranın kaymasını ve zoom yapılmasını tamamen engeller */
+            touch-action: none; 
         }
         #ui {
             position: absolute;
@@ -86,21 +91,20 @@
             100% { transform: translateY(0px); }
         }
 
-        /* --- GÜNCELLENEN KISIM: BOYUT VE PİKSEL NETLİĞİ --- */
         .floating-cat {
-            width: 60px; /* Tam oyun içi boyutu (Çok daha küçük) */
+            width: 60px; 
             height: auto;
             object-fit: contain;
             margin-bottom: 30px;
             animation: floating 2s ease-in-out infinite; 
-            image-rendering: pixelated; /* Tarayıcının bulanıklaştırmasını engeller, pikselleri keskin yapar */
-            image-rendering: crisp-edges; /* Eski tarayıcılar için destek */
+            image-rendering: pixelated; 
+            image-rendering: crisp-edges; 
         }
 
         .menu-text {
             font-size: 16px;
             color: #888;
-            max-width: 500px;
+            max-width: 80%;
             text-align: center;
             line-height: 1.6;
             margin-bottom: 40px;
@@ -133,7 +137,7 @@
         
         <div class="menu-text">
             Karanlıktasın. Gözlerini değil, kulaklarını kullan.<br><br>
-            Sesi duyduğun yere tıkla ve içindeki parlayan rünü,<br>kırmızı noktadan başlayarak tek bir fırça darbesiyle çiz.
+            Sesi duyduğun yere dokun ve içindeki parlayan rünü,<br>kırmızı noktadan başlayarak tek bir fırça darbesiyle çiz.
         </div>
         <button class="menu-btn" id="startBtn">EĞİTİME BAŞLA</button>
     </div>
@@ -191,7 +195,6 @@
         const uiEl = document.getElementById('ui');
         const catContainerEl = document.getElementById('catMasterContainer');
 
-        // SENİN KEDİ GÖRSELLERİN
         const catImages = {
             normal: "normal.png", 
             happy: "mutlu.png",  
@@ -200,7 +203,6 @@
 
         function catSpeaks(message, emotion = "normal") {
             catDialogEl.innerHTML = message;
-            // Buraya da piksel netliği için style ekledim
             catImgEl.innerHTML = `<img src="${catImages[emotion]}" alt="Usta Kedi" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges;">`;
         }
 
@@ -233,8 +235,11 @@
             document.getElementById('caughtDisplay').innerText = caughtInLevel;
             document.getElementById('livesDisplay').innerText = lives;
 
+            // iOS Safari ve mobil cihazlarda sesi kilitten çıkarmak için tıklandığı an başlatıyoruz
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } else if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
             }
 
             gameStarted = true;
@@ -252,7 +257,8 @@
             
             if (expireTimer) clearTimeout(expireTimer);
 
-            target.x = Math.random() * (canvas.width - 300) + 150;
+            // Hedeflerin mobilde ekran dışına taşmasını engellemek için kenar boşluklarını artırdık
+            target.x = Math.random() * (canvas.width - 200) + 100;
             target.y = Math.random() * (canvas.height - 300) + 100;
             target.active = true;
             target.nodesHit = 0;
@@ -396,7 +402,7 @@
                 let ny = target.y + target.shape.points[expectedNode][1];
                 let dist = Math.hypot(nx - clientX, ny - clientY);
 
-                if (dist < 35) { 
+                if (dist < 40) { // Mobilde parmak kalınlığından dolayı toleransı (35 -> 40) biraz artırdım
                     target.nodesHit++;
                     if (target.nodesHit === target.shape.points.length) {
                         handleCatch();
@@ -405,40 +411,70 @@
             }
         }
 
-        canvas.addEventListener('mousedown', (e) => {
+        // --- MOBİL (TOUCH) VE BİLGİSAYAR (MOUSE) İÇİN ORTAK ETKİLEŞİM SİSTEMİ ---
+
+        // Gelen olayın parmak mı fare mi olduğunu anlayıp doğru koordinatı veren fonksiyon
+        function getCoordinates(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function handleInputStart(e) {
+            if (e.cancelable) e.preventDefault(); // Sayfanın mobilde kaymasını engeller
             if (!gameStarted) return; 
 
             isDrawing = true;
+            const coords = getCoordinates(e);
             ctx.beginPath();
-            ctx.moveTo(e.clientX, e.clientY);
-            checkShapeProgress(e.clientX, e.clientY);
-        });
+            ctx.moveTo(coords.x, coords.y);
+            checkShapeProgress(coords.x, coords.y);
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function handleInputMove(e) {
+            if (e.cancelable) e.preventDefault();
             if (!isDrawing || !gameStarted) return;
             
-            ctx.lineTo(e.clientX + (Math.random() * 10 - 5), e.clientY + (Math.random() * 10 - 5));
+            const coords = getCoordinates(e);
+            ctx.lineTo(coords.x + (Math.random() * 10 - 5), coords.y + (Math.random() * 10 - 5));
             ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.2})`; 
             ctx.lineWidth = Math.random() * 3 + 1;
             ctx.stroke();
 
-            checkShapeProgress(e.clientX, e.clientY);
-        });
+            checkShapeProgress(coords.x, coords.y);
+        }
 
-        canvas.addEventListener('mouseup', () => {
+        function handleInputEnd(e) {
+            if (e.cancelable) e.preventDefault();
             isDrawing = false;
             ctx.closePath();
             
             if (target.active && target.nodesHit > 0) {
                 target.nodesHit = 0; 
             }
-        });
+        }
+
+        // Hem Fare dinleyicileri...
+        canvas.addEventListener('mousedown', handleInputStart);
+        canvas.addEventListener('mousemove', handleInputMove);
+        canvas.addEventListener('mouseup', handleInputEnd);
+
+        // Hem de Parmak (Touch) dinleyicileri eklendi
+        canvas.addEventListener('touchstart', handleInputStart, { passive: false });
+        canvas.addEventListener('touchmove', handleInputMove, { passive: false });
+        canvas.addEventListener('touchend', handleInputEnd);
+        canvas.addEventListener('touchcancel', handleInputEnd);
+
+        // ------------------------------------------------------------------------
 
         function playSound(targetX) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             const panner = audioCtx.createStereoPanner();
+            
+            // Pan değeri -1 (tam sol) ile 1 (tam sağ) arasında olacak
             panner.pan.value = (targetX / canvas.width) * 2 - 1;
 
             osc.type = 'sawtooth';
