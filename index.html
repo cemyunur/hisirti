@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ustanın Eğitimi</title>
+    <style>
+        body { 
+            margin: 0; 
+            background-color: #050505; 
+            overflow: hidden; 
+            cursor: crosshair; 
+            font-family: monospace;
+            color: #ddd;
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+        canvas { 
+            display: block; 
+            touch-action: none; 
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            user-select: none;
+            font-size: 16px;
+            z-index: 10;
+            display: none; 
+        }
+        
+        #catMasterContainer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            align-items: flex-end;
+            gap: 15px;
+            pointer-events: none;
+            z-index: 10;
+            display: none; 
+        }
+        
+        #catImagePlaceholder {
+            width: 80px;
+            height: 80px;
+            background-color: #222;
+            border: 2px solid #555;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+        }
+
+        #catDialogBox {
+            background-color: rgba(20, 20, 20, 0.8);
+            border: 2px solid #444;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            min-height: 40px;
+            font-size: 14px;
+            line-height: 1.4;
+            color: #aaa;
+        }
+
+        .highlight { color: #d63031; font-weight: bold; }
+        .success { color: #00b894; font-weight: bold; }
+
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(5, 5, 5, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); } 
+            100% { transform: translateY(0px); }
+        }
+
+        .floating-cat {
+            width: 60px; 
+            height: auto;
+            object-fit: contain;
+            margin-bottom: 30px;
+            animation: floating 2s ease-in-out infinite; 
+            image-rendering: pixelated; 
+            image-rendering: crisp-edges; 
+        }
+
+        .menu-text {
+            font-size: 16px;
+            color: #888;
+            max-width: 500px;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .menu-btn {
+            background-color: transparent;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-family: monospace;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+        }
+
+        .menu-btn:hover {
+            background-color: rgba(214, 48, 49, 0.2);
+            border-color: #d63031;
+            box-shadow: 0 0 15px rgba(214, 48, 49, 0.4);
+        }
+
+        #inventoryTable {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(15, 15, 15, 0.8);
+            border: 1px solid #444;
+            padding: 10px;
+            font-size: 14px;
+            z-index: 10;
+            display: none;
+            min-width: 220px; 
+            image-rendering: pixelated;
+            pointer-events: none;
+            white-space: nowrap; 
+        }
+        .inv-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 2px;
+            gap: 20px; 
+        }
+        
+        #lootFeed {
+            position: absolute;
+            top: 250px; 
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .loot-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: rgba(20, 20, 20, 0.7);
+            border: 1px solid #333;
+            padding: 5px 10px;
+            border-radius: 5px;
+            animation: slideInFadeOut 4s forwards;
+        }
+        .loot-img {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+        @keyframes slideInFadeOut {
+            0% { transform: translateX(50px); opacity: 0; }
+            10% { transform: translateX(0); opacity: 1; }
+            70% { opacity: 1; }
+            100% { transform: translateY(-20px); opacity: 0; }
+        }
+
+        /* LAIKA KUTUSU */
+        #laikaContainer {
+            position: absolute;
+            width: 100px;
+            text-align: center;
+            display: none;
+            z-index: 50; 
+            pointer-events: none; 
+        }
+        #laikaVisualBox {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(50, 50, 50, 0.8); 
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 5px auto;
+            transition: transform 0.1s;
+            overflow: hidden;
+        }
+        #laikaImg {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            image-rendering: pixelated;
+            display: none; 
+        }
+        #laikaEmoji {
+            font-size: 50px;
+            pointer-events: none; 
+        }
+        
+        #laikaBarBG {
+            width: 100%;
+            height: 8px;
+            background: #222;
+            border: 1px solid #555;
+            position: relative;
+        }
+        #laikaBarFill {
+            width: 0%;
+            height: 100%;
+            background: #f1c40f;
+            box-shadow: 0 0 5px #f1c40f;
+        }
+
+        .color-common { color: #bdc3c7; }
+        .color-rare { color: #3498db; }
+        .color-epic { color: #9b59b6; }
+        .color-legendary { color: #f1c40f; text-shadow: 0 0 5px #f1c40f; }
+
+    </style>
+</head>
+<body>
+
+    <div id="startMenu" class="menu-overlay">
+        <img src="baslik.png" alt="Kör Kedi Başlık" class="floating-cat" onerror="this.style.display='none'">
+        <div class="menu-text">
+            Karanlıktasın. Gözlerini değil, kulaklarını kullan.<br><br>
+            Sesi duyduğun yere tıkla ve içindeki parlayan rünü,<br>kırmızı noktadan başlayarak tek bir fırça darbesiyle çiz.
+        </div>
+        <button class="menu-btn" id="startBtn">EĞİTİME BAŞLA</button>
+    </div>
+
+    <div id="gameOverMenu" class="menu-overlay" style="display: none;">
+        <img src="baslik.png" alt="Karanlığa Yem Oldun" class="floating-cat" onerror="this.style.display='none'">
+        <div class="menu-text">
+            Ulaşılan Seviye: <span id="finalLevel" class="success">1</span><br>
+            Toplanan Hışırtılı Av: <span id="finalScore" class="success">0</span><br><br>
+            Ustan seni izliyor... Şansını tekrar denemek ister misin?
+        </div>
+        <button class="menu-btn" id="restartBtn">YENİDEN DENE</button>
+    </div>
+
+    <div id="ui">
+        Seviye: <span id="levelDisplay">1</span> <br>
+        Hışırtılı Av: <span id="score">0</span> <br><br>
+        Can: <span id="livesDisplay" class="highlight">3</span><br>
+        Yakalanan: <span id="caughtDisplay" class="success">0</span> / 10 <br>
+    </div>
+
+    <div id="inventoryTable"></div>
+    <div id="lootFeed"></div>
+
+    <div id="laikaContainer">
+        <div id="laikaVisualBox">
+            <img src="laika.png" id="laikaImg" alt="Laika" onload="this.style.display='block'; document.getElementById('laikaEmoji').style.display='none';" onerror="this.style.display='none';">
+            <span id="laikaEmoji">🐶</span>
+        </div>
+        <div id="laikaBarBG"><div id="laikaBarFill"></div></div>
+        <div style="font-size: 10px; margin-top: 5px; color: #f1c40f;">LAIKA'YI SEV</div>
+    </div>
+
+    <div id="catMasterContainer">
+        <div id="catImagePlaceholder">🐱</div> 
+        <div id="catDialogBox" id="catDialog"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let isDrawing = false;
+        let isPettingLaika = false; 
+        
+        let score = 0;
+        let gameStarted = false;
+        let audioCtx;
+        let floatingTexts = [];
+        
+        let level = 1;
+        let caughtInLevel = 0;
+        let lives = 3; 
+        let targetLifetime = 4000; 
+        let expireTimer = null;    
+
+        const catDialogEl = document.getElementById('catDialogBox');
+        const catImgEl = document.getElementById('catImagePlaceholder');
+        const uiEl = document.getElementById('ui');
+        const catContainerEl = document.getElementById('catMasterContainer');
+        const invEl = document.getElementById('inventoryTable');
+        const lootFeedEl = document.getElementById('lootFeed');
+        const laikaCont = document.getElementById('laikaContainer');
+        const laikaFill = document.getElementById('laikaBarFill');
+
+        const creatures = [
+            { id: 'asker', name: "Hışırtı Askeri", file: "asker.png", chance: 0.40, count: 0, class: "color-common" },
+            { id: 'naylon', name: "Naylon Canavarı", file: "naylon.png", chance: 0.35, count: 0, class: "color-common" },
+            { id: 'kral', name: "Hışırtı Kralı", file: "kral.png", chance: 0.15, count: 0, class: "color-rare" },
+            { id: 'kralice', name: "Hışırtılı Uzaylı Kraliçe", file: "kralice.png", chance: 0.07, count: 0, class: "color-epic" },
+            { id: 'sinek', name: "Ölümcül Sinek Tanrısı", file: "sinek.png", chance: 0.02, count: 0, class: "color-epic" },
+            { id: 'ucan', name: "Uçan Küçük Yaratık", file: "ucan.png", chance: 0.01, count: 0, class: "color-legendary" }
+        ];
+
+        let laikaActive = false;
+        let laikaProgress = 0;
+        let lastX = 0;
+        let lastDir = 0;
+        let laikaTimer = null;
+
+        const catImages = {
+            normal: "normal.png", 
+            happy: "mutlu.png",  
+            angry: "sinirli.png"   
+        };
+
+        function catSpeaks(message, emotion = "normal") {
+            catDialogEl.innerHTML = message;
+            catImgEl.innerHTML = `<img src="${catImages[emotion]}" alt="Usta Kedi" style="width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges;" onerror="this.style.display='none'">`;
+        }
+
+        function updateInventoryUI() {
+            invEl.innerHTML = '<div style="border-bottom: 1px solid #555; margin-bottom: 5px; font-weight: bold; color: #fff;">AV GEÇMİŞİ</div>';
+            let hasItems = false;
+            creatures.forEach(c => {
+                if (c.count > 0) {
+                    hasItems = true;
+                    const row = document.createElement('div');
+                    row.className = 'inv-row';
+                    row.innerHTML = `<span class="${c.class}">${c.name}</span> <span>x${c.count}</span>`;
+                    invEl.appendChild(row);
+                }
+            });
+            invEl.style.display = hasItems ? 'block' : 'none';
+        }
+
+        function spawnLoot() {
+            let roll = Math.random();
+            let cumulative = 0;
+            let caught = creatures[0];
+            for (let c of creatures) {
+                cumulative += c.chance;
+                if (roll <= cumulative) { caught = c; break; }
+            }
+            caught.count++;
+            
+            const item = document.createElement('div');
+            item.className = 'loot-item';
+            item.innerHTML = `<div style="font-size:12px;" class="${caught.class}">${caught.name}</div><img src="${caught.file}" class="loot-img" onerror="this.style.display='none'">`;
+            lootFeedEl.appendChild(item);
+            setTimeout(() => { if(item.parentNode) lootFeedEl.removeChild(item); }, 4000);
+            
+            updateInventoryUI();
+        }
+
+        function spawnLaika() {
+            if (!gameStarted || laikaActive) return;
+            laikaActive = true;
+            laikaProgress = 0;
+            
+            let maxX = window.innerWidth - 150; 
+            let maxY = window.innerHeight - 200; 
+            let randomX = Math.max(50, Math.random() * maxX);
+            let randomY = Math.max(50, Math.random() * maxY); 
+            
+            laikaCont.style.left = randomX + "px";
+            laikaCont.style.top = randomY + "px";
+            
+            laikaCont.style.display = 'block';
+            catSpeaks("Laika geldi! Rünü bırak ve onu sev!", "normal");
+        }
+        
+        function scheduleLaika() {
+            if(laikaTimer) clearTimeout(laikaTimer);
+            if(!gameStarted) return;
+            
+            // LAIKA ÇIKIŞ SÜRESİ: 2 ile 6 saniye arasında rastgele (2000ms - 6000ms)
+            laikaTimer = setTimeout(() => {
+                if(gameStarted && !laikaActive) spawnLaika();
+                scheduleLaika();
+            }, Math.random() * 4000 + 2000); 
+        }
+
+        const shapeTypes = [
+            { name: 'I', points: [[0, -35], [0, 35]] },
+            { name: '-', points: [[-35, 0], [35, 0]] },
+            { name: 'L', points: [[-25, -35], [-25, 25], [35, 25]] },
+            { name: 'Ters L', points: [[25, -35], [25, 25], [-35, 25]] }
+        ];
+
+        let target = { x: 0, y: 0, active: false, shape: null, nodesHit: 0, spawnTime: 0 };
+
+        function initGame() {
+            document.getElementById('startMenu').style.display = 'none';
+            document.getElementById('gameOverMenu').style.display = 'none';
+            uiEl.style.display = 'block';
+            catContainerEl.style.display = 'flex';
+
+            score = 0;
+            level = 1;
+            caughtInLevel = 0;
+            lives = 3; 
+            targetLifetime = 4000;
+            target.active = false;
+            floatingTexts = [];
+            isPettingLaika = false;
+            isDrawing = false;
+            if (expireTimer) clearTimeout(expireTimer);
+
+            document.getElementById('score').innerText = score;
+            document.getElementById('levelDisplay').innerText = level;
+            document.getElementById('caughtDisplay').innerText = caughtInLevel;
+            document.getElementById('livesDisplay').innerText = lives;
+
+            lootFeedEl.innerHTML = '';
+            creatures.forEach(c => c.count = 0);
+            updateInventoryUI();
+            
+            laikaActive = false;
+            laikaCont.style.display = 'none';
+            laikaProgress = 0;
+            
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } else if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            gameStarted = true;
+            catSpeaks("Karanlığa odaklan... İlk hedef yaklaşıyor.", "normal");
+            
+            scheduleLaika();
+            
+            setTimeout(scheduleNextSpawn, 1500);
+        }
+
+        document.getElementById('startBtn').addEventListener('click', initGame);
+        document.getElementById('restartBtn').addEventListener('click', initGame);
+
+        function spawnTarget() {
+            if (!gameStarted) return;
+            
+            if (expireTimer) clearTimeout(expireTimer);
+
+            target.x = Math.random() * (canvas.width - 300) + 150;
+            target.y = Math.random() * (canvas.height - 300) + 100;
+            target.active = true;
+            target.nodesHit = 0;
+            target.spawnTime = Date.now();
+            target.shape = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+
+            playSound(target.x);
+            drawTarget();
+
+            expireTimer = setTimeout(() => {
+                if (target.active) {
+                    handleMiss();
+                }
+            }, targetLifetime);
+        }
+
+        function drawTarget() {
+            ctx.save();
+            ctx.translate(target.x, target.y);
+            
+            ctx.fillStyle = 'rgba(200, 200, 220, 0.4)'; 
+            ctx.beginPath();
+            for(let i = 0; i < 12; i++) {
+                let angle = (i / 12) * Math.PI * 2;
+                let radius = 30 + Math.random() * 30; 
+                ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(180, 20, 20, 0.9)'; 
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            
+            let startX = target.shape.points[0][0];
+            let startY = target.shape.points[0][1];
+            ctx.moveTo(startX, startY);
+            
+            for(let i = 1; i < target.shape.points.length; i++) {
+                ctx.lineTo(target.shape.points[i][0], target.shape.points[i][1]);
+            }
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 100, 100, 1)';
+            ctx.beginPath();
+            ctx.arc(startX, startY, 7, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function handleCatch() {
+            target.active = false;
+            clearTimeout(expireTimer); 
+            
+            caughtInLevel++;
+            document.getElementById('caughtDisplay').innerText = caughtInLevel;
+
+            let timeTaken = Date.now() - target.spawnTime;
+            let points = Math.floor(Math.max(10, 300 - (timeTaken / 10)));
+            score += points;
+            document.getElementById('score').innerText = score;
+
+            floatingTexts.push({ x: target.x, y: target.y - 40, text: `+${points}`, alpha: 1 });
+
+            ctx.fillStyle = 'rgba(100, 255, 100, 0.3)'; 
+            ctx.beginPath();
+            ctx.arc(target.x, target.y, 80 + Math.random() * 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            spawnLoot(); 
+
+            checkLevelProgress();
+        }
+
+        function handleMiss() {
+            target.active = false;
+            lives--; 
+            document.getElementById('livesDisplay').innerText = lives;
+
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const angryPhrases = [
+                `Çok yavaşsın! Gözlerini değil, kulaklarını kullan. Canın ${lives}'e düştü!`,
+                `Av elinden kayıp gitti... ${lives} canın kaldı.`,
+                "Böyle gidersen karanlık seni yutacak! Titriyorsun!",
+                `Tembel çömez! Canın ${lives}. Çizgilerini net at.`
+            ];
+            catSpeaks(angryPhrases[Math.floor(Math.random() * angryPhrases.length)], "angry");
+
+            checkLevelProgress();
+        }
+
+        function checkLevelProgress() {
+            if (lives <= 0) { 
+                gameStarted = false;
+                uiEl.style.display = 'none';
+                catContainerEl.style.display = 'none';
+                
+                lootFeedEl.innerHTML = '';
+                laikaActive = false;
+                laikaCont.style.display = 'none';
+                if(laikaTimer) clearTimeout(laikaTimer);
+
+                document.getElementById('finalLevel').innerText = level;
+                document.getElementById('finalScore').innerText = score;
+                document.getElementById('gameOverMenu').style.display = 'flex';
+                
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.8)'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            if (caughtInLevel >= 10) {
+                level++;
+                caughtInLevel = 0;
+                lives = 3; 
+                
+                targetLifetime = Math.max(1500, targetLifetime - 400); 
+
+                document.getElementById('levelDisplay').innerText = level;
+                document.getElementById('caughtDisplay').innerText = caughtInLevel;
+                document.getElementById('livesDisplay').innerText = lives;
+
+                catSpeaks(`Aferin çömez, Seviye ${level}'e geçtin. Canlarını yeniledim ama karanlık artık daha hızlı...`, "happy");
+                
+                setTimeout(scheduleNextSpawn, 3000); 
+            } else {
+                scheduleNextSpawn();
+            }
+        }
+
+        function scheduleNextSpawn() {
+            if (!gameStarted) return;
+            let randomDelay = Math.random() * 3000 + 1500;
+            setTimeout(spawnTarget, randomDelay);
+        }
+
+        function checkShapeProgress(clientX, clientY) {
+            if (!target.active) return;
+
+            let expectedNode = target.nodesHit;
+            if (expectedNode < target.shape.points.length) {
+                let nx = target.x + target.shape.points[expectedNode][0];
+                let ny = target.y + target.shape.points[expectedNode][1];
+                let dist = Math.hypot(nx - clientX, ny - clientY);
+
+                if (dist < 40) { 
+                    target.nodesHit++;
+                    if (target.nodesHit === target.shape.points.length) {
+                        handleCatch();
+                    }
+                }
+            }
+        }
+
+        function getCoordinates(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        function handleInputStart(e) {
+            if (e.cancelable) e.preventDefault(); 
+            if (!gameStarted) return; 
+
+            const coords = getCoordinates(e);
+
+            if (laikaActive) {
+                const rect = laikaCont.getBoundingClientRect();
+                if (coords.x >= rect.left - 40 && coords.x <= rect.right + 40 && coords.y >= rect.top - 40 && coords.y <= rect.bottom + 40) {
+                    lastX = coords.x;
+                    isPettingLaika = true; 
+                    isDrawing = false;
+                    return; 
+                }
+            }
+
+            isPettingLaika = false;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+            checkShapeProgress(coords.x, coords.y);
+        }
+
+        function handleInputMove(e) {
+            if (e.cancelable) e.preventDefault();
+            if (!gameStarted) return;
+            
+            const coords = getCoordinates(e);
+
+            if (laikaActive && isPettingLaika) {
+                const rect = laikaCont.getBoundingClientRect();
+                if (coords.x >= rect.left - 60 && coords.x <= rect.right + 60 && coords.y >= rect.top - 60 && coords.y <= rect.bottom + 60) {
+                    let currentDir = coords.x > lastX ? 1 : -1;
+                    if (currentDir !== lastDir && Math.abs(coords.x - lastX) > 3) {
+                        laikaProgress = Math.min(laikaProgress + 4, 100); 
+                        
+                        if (laikaProgress >= 100) {
+                            laikaActive = false;
+                            laikaCont.style.display = 'none';
+                            catSpeaks("Laika mutlu oldu, aferin...", "happy");
+                            isPettingLaika = false;
+                        }
+
+                        lastDir = currentDir;
+                        
+                        const visualBox = document.getElementById('laikaVisualBox');
+                        if(visualBox && laikaActive) {
+                            visualBox.style.transform = `scale(1.1)`;
+                            setTimeout(() => { if(visualBox) visualBox.style.transform = `scale(1)`; }, 50);
+                        }
+                    }
+                    lastX = coords.x;
+                } else {
+                    isPettingLaika = false;
+                }
+                return; 
+            }
+
+            if (!isDrawing) return;
+            
+            ctx.lineTo(coords.x + (Math.random() * 10 - 5), coords.y + (Math.random() * 10 - 5));
+            ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.2})`; 
+            ctx.lineWidth = Math.random() * 3 + 1;
+            ctx.stroke();
+
+            checkShapeProgress(coords.x, coords.y);
+        }
+
+        function handleInputEnd(e) {
+            if (e.cancelable) e.preventDefault();
+            isDrawing = false;
+            isPettingLaika = false;
+            ctx.closePath();
+            
+            if (target.active && target.nodesHit > 0) {
+                target.nodesHit = 0; 
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleInputStart);
+        canvas.addEventListener('mousemove', handleInputMove);
+        canvas.addEventListener('mouseup', handleInputEnd);
+
+        canvas.addEventListener('touchstart', handleInputStart, { passive: false });
+        canvas.addEventListener('touchmove', handleInputMove, { passive: false });
+        canvas.addEventListener('touchend', handleInputEnd);
+        canvas.addEventListener('touchcancel', handleInputEnd);
+
+        function playSound(targetX) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = (targetX / canvas.width) * 2 - 1;
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300 + Math.random() * 100, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+
+            osc.connect(panner);
+            panner.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function gameLoop() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.04)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (laikaActive) {
+                if (laikaProgress < 100) {
+                    laikaProgress = Math.max(laikaProgress - 0.15, 0); 
+                    laikaFill.style.width = laikaProgress + '%';
+                }
+            }
+
+            if (gameStarted) {
+                for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                    let ft = floatingTexts[i];
+                    ctx.fillStyle = `rgba(255, 255, 255, ${ft.alpha})`;
+                    ctx.font = "bold 20px monospace";
+                    ctx.fillText(ft.text, ft.x, ft.y);
+                    ft.y -= 1.5; 
+                    ft.alpha -= 0.02; 
+                    
+                    if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+
+    </script>
+</body>
+</html>
