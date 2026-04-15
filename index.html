@@ -151,14 +151,15 @@
             gap: 20px; 
         }
         
+        /* GÜNCELLENDİ: LOOT KUTUSU SOL ALTA (KEDİNİN ÜSTÜNE) ALINDI */
         #lootFeed {
             position: absolute;
-            top: 250px; 
-            right: 20px;
+            bottom: 130px; /* Kedi kutusunun hemen üstü */
+            left: 20px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            align-items: flex-end;
+            align-items: flex-start; /* Yazı ve resim sola hizalı */
             pointer-events: none;
             z-index: 10;
         }
@@ -173,31 +174,30 @@
             animation: slideInFadeOut 4s forwards;
         }
         .loot-img {
-            width: 30px;
-            height: 30px;
+            width: 40px; /* BOYUT 40 PİKSEL YAPILDI */
+            height: 40px;
             object-fit: contain;
             image-rendering: pixelated;
         }
+        /* Animasyon sol taraftan gelecek şekilde düzeltildi */
         @keyframes slideInFadeOut {
-            0% { transform: translateX(50px); opacity: 0; }
+            0% { transform: translateX(-50px); opacity: 0; }
             10% { transform: translateX(0); opacity: 1; }
             70% { opacity: 1; }
             100% { transform: translateY(-20px); opacity: 0; }
         }
 
-        /* GÜNCELLENDİ: LAIKA KUTUSU ARTIK ÇERÇEVESİZ VE DAHA BÜYÜK */
         #laikaContainer {
             position: absolute;
-            width: 120px; /* Genişletildi */
+            width: 120px; 
             text-align: center;
             display: none;
             z-index: 50; 
             pointer-events: none; 
         }
         #laikaVisualBox {
-            width: 100px; /* Büyütüldü */
-            height: 100px; /* Büyütüldü */
-            /* Arka plan rengi (background-color) ve kenarlık (border-radius) silindi */
+            width: 100px; 
+            height: 100px; 
             background-color: transparent; 
             display: flex;
             justify-content: center;
@@ -213,7 +213,7 @@
             display: none; 
         }
         #laikaEmoji {
-            font-size: 65px; /* Emoji de büyütüldü */
+            font-size: 65px; 
             pointer-events: none; 
         }
         
@@ -229,6 +229,28 @@
             height: 100%;
             background: #f1c40f;
             box-shadow: 0 0 5px #f1c40f;
+        }
+
+        /* YENİ: LAIKA ÇİŞ EFEKTİ */
+        #peeEffect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 250px;
+            /* Organik, asimetrik bir leke görünümü veren kodlar */
+            background: radial-gradient(ellipse, rgba(220, 200, 20, 0.7) 0%, rgba(200, 180, 10, 0.4) 40%, rgba(0,0,0,0) 70%);
+            border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%; 
+            pointer-events: none;
+            z-index: 40; 
+            display: none;
+        }
+        @keyframes peeFade {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
         }
 
         .color-common { color: #bdc3c7; }
@@ -277,6 +299,8 @@
         <div id="laikaBarBG"><div id="laikaBarFill"></div></div>
         <div style="font-size: 10px; margin-top: 5px; color: #f1c40f;">LAIKA'YI SEV</div>
     </div>
+
+    <div id="peeEffect"></div>
 
     <div id="catMasterContainer">
         <div id="catImagePlaceholder">🐱</div> 
@@ -330,6 +354,7 @@
 
         let laikaActive = false;
         let laikaProgress = 0;
+        let laikaPatience = 100; // YENİ: Laika'nın sabır sayacı (dolmazsa işer)
         let lastX = 0;
         let lastDir = 0;
         let laikaTimer = null;
@@ -372,17 +397,31 @@
             
             const item = document.createElement('div');
             item.className = 'loot-item';
-            item.innerHTML = `<div style="font-size:12px;" class="${caught.class}">${caught.name}</div><img src="${caught.file}" class="loot-img" onerror="this.style.display='none'">`;
+            // YENİ: Görsel solda, metin sağda olacak şekilde sıralandı
+            item.innerHTML = `<img src="${caught.file}" class="loot-img" onerror="this.style.display='none'"><div style="font-size:12px;" class="${caught.class}">${caught.name}</div>`;
             lootFeedEl.appendChild(item);
             setTimeout(() => { if(item.parentNode) lootFeedEl.removeChild(item); }, 4000);
             
             updateInventoryUI();
         }
 
+        // YENİ ÇİŞ EFEKTİ TETİKLEYİCİSİ
+        function showPeeEffect() {
+            const pee = document.getElementById('peeEffect');
+            pee.style.display = 'none'; // Reset animation
+            void pee.offsetWidth; // Trigger reflow
+            pee.style.display = 'block';
+            pee.style.animation = 'peeFade 1.2s forwards';
+            setTimeout(() => {
+                pee.style.display = 'none';
+            }, 1200);
+        }
+
         function spawnLaika() {
             if (!gameStarted || laikaActive) return;
             laikaActive = true;
             laikaProgress = 0;
+            laikaPatience = 100; // Sabır 100'den başlar
             
             let maxX = window.innerWidth - 150; 
             let maxY = window.innerHeight - 200; 
@@ -396,12 +435,10 @@
             catSpeaks("Laika geldi! Rünü bırak ve onu sev!", "normal");
         }
         
-        // GÜNCELLENDİ: ZAMANLAMA MANTIĞI YENİDEN YAZILDI
         function scheduleLaika() {
             if(laikaTimer) clearTimeout(laikaTimer);
             if(!gameStarted) return;
             
-            // LAIKA GİTTİKTEN SONRA: 3 saniye ile 8 saniye arasında tamamen rastgele bekle
             let randomDelay = Math.floor(Math.random() * 5000) + 3000;
             
             laikaTimer = setTimeout(() => {
@@ -449,6 +486,7 @@
             laikaActive = false;
             laikaCont.style.display = 'none';
             laikaProgress = 0;
+            laikaPatience = 100;
             
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -459,7 +497,6 @@
             gameStarted = true;
             catSpeaks("Karanlığa odaklan... İlk hedef yaklaşıyor.", "normal");
             
-            // Oyun başladığında ilk Laika'yı planla
             scheduleLaika();
             
             setTimeout(scheduleNextSpawn, 1500);
@@ -676,13 +713,12 @@
                     if (currentDir !== lastDir && Math.abs(coords.x - lastX) > 3) {
                         laikaProgress = Math.min(laikaProgress + 4, 100); 
                         
-                        // GÜNCELLENDİ: Laika gidince zamanlayıcıyı buradan başlat
                         if (laikaProgress >= 100) {
                             laikaActive = false;
                             laikaCont.style.display = 'none';
                             catSpeaks("Laika mutlu oldu, aferin...", "happy");
                             isPettingLaika = false;
-                            scheduleLaika(); // BİR SONRAKİ RASTGELE ÇIKIŞI BAŞLAT
+                            scheduleLaika(); 
                         }
 
                         lastDir = currentDir;
@@ -754,9 +790,24 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (laikaActive) {
+                // LAIKA'NIN SABRI TÜKENİYOR (Yaklaşık 5.5 saniye süresi var)
+                laikaPatience -= 0.3;
+
                 if (laikaProgress < 100) {
                     laikaProgress = Math.max(laikaProgress - 0.15, 0); 
                     laikaFill.style.width = laikaProgress + '%';
+                }
+
+                // EĞER SABIR BİTERSE ÇİŞ CEZASI TETİKLENİR
+                if (laikaPatience <= 0) {
+                    laikaActive = false;
+                    laikaCont.style.display = 'none';
+                    catSpeaks("Laikayı sevmedin! Ekrana işedi...", "angry");
+                    
+                    showPeeEffect(); // Lekeyi ekrana vur
+
+                    isPettingLaika = false;
+                    scheduleLaika(); // Yeni Laika çıkışını planla
                 }
             }
 
