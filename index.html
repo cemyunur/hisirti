@@ -185,26 +185,25 @@
             100% { transform: translateY(-20px); opacity: 0; }
         }
 
-        /* LAIKA KUTUSU */
+        /* GÜNCELLENDİ: LAIKA KUTUSU ARTIK ÇERÇEVESİZ VE DAHA BÜYÜK */
         #laikaContainer {
             position: absolute;
-            width: 100px;
+            width: 120px; /* Genişletildi */
             text-align: center;
             display: none;
             z-index: 50; 
             pointer-events: none; 
         }
         #laikaVisualBox {
-            width: 80px;
-            height: 80px;
-            background-color: rgba(50, 50, 50, 0.8); 
-            border-radius: 10px;
+            width: 100px; /* Büyütüldü */
+            height: 100px; /* Büyütüldü */
+            /* Arka plan rengi (background-color) ve kenarlık (border-radius) silindi */
+            background-color: transparent; 
             display: flex;
             justify-content: center;
             align-items: center;
             margin: 0 auto 5px auto;
             transition: transform 0.1s;
-            overflow: hidden;
         }
         #laikaImg {
             width: 100%;
@@ -214,7 +213,7 @@
             display: none; 
         }
         #laikaEmoji {
-            font-size: 50px;
+            font-size: 65px; /* Emoji de büyütüldü */
             pointer-events: none; 
         }
         
@@ -397,15 +396,19 @@
             catSpeaks("Laika geldi! Rünü bırak ve onu sev!", "normal");
         }
         
+        // GÜNCELLENDİ: ZAMANLAMA MANTIĞI YENİDEN YAZILDI
         function scheduleLaika() {
             if(laikaTimer) clearTimeout(laikaTimer);
             if(!gameStarted) return;
             
-            // LAIKA ÇIKIŞ SÜRESİ: 2 ile 6 saniye arasında rastgele (2000ms - 6000ms)
+            // LAIKA GİTTİKTEN SONRA: 3 saniye ile 8 saniye arasında tamamen rastgele bekle
+            let randomDelay = Math.floor(Math.random() * 5000) + 3000;
+            
             laikaTimer = setTimeout(() => {
-                if(gameStarted && !laikaActive) spawnLaika();
-                scheduleLaika();
-            }, Math.random() * 4000 + 2000); 
+                if(gameStarted && !laikaActive) {
+                    spawnLaika();
+                }
+            }, randomDelay); 
         }
 
         const shapeTypes = [
@@ -456,6 +459,7 @@
             gameStarted = true;
             catSpeaks("Karanlığa odaklan... İlk hedef yaklaşıyor.", "normal");
             
+            // Oyun başladığında ilk Laika'yı planla
             scheduleLaika();
             
             setTimeout(scheduleNextSpawn, 1500);
@@ -672,11 +676,13 @@
                     if (currentDir !== lastDir && Math.abs(coords.x - lastX) > 3) {
                         laikaProgress = Math.min(laikaProgress + 4, 100); 
                         
+                        // GÜNCELLENDİ: Laika gidince zamanlayıcıyı buradan başlat
                         if (laikaProgress >= 100) {
                             laikaActive = false;
                             laikaCont.style.display = 'none';
                             catSpeaks("Laika mutlu oldu, aferin...", "happy");
                             isPettingLaika = false;
+                            scheduleLaika(); // BİR SONRAKİ RASTGELE ÇIKIŞI BAŞLAT
                         }
 
                         lastDir = currentDir;
