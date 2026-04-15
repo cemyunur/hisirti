@@ -439,7 +439,7 @@
             if(laikaTimer) clearTimeout(laikaTimer);
             if(!gameStarted) return;
             
-            let randomDelay = Math.floor(Math.random() * 5000) + 3000;
+            let randomDelay = Math.floor(Math.random() * 13000) + 600;
             
             laikaTimer = setTimeout(() => {
                 if(gameStarted && !laikaActive) {
